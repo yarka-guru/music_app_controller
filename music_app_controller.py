@@ -48,7 +48,7 @@ class MusicAppController:
             return
 
         for language in LANGUAGES:
-            music_file = os.path.join(MUSIC_DIR, language, f"{activity}.wav")
+            music_file = os.path.join(MUSIC_DIR, language, f"{activity}.mp3")
             try:
                 self.pause()
                 subprocess.run(["afplay", music_file], check=True)
