@@ -1,0 +1,3 @@
+pync
+PyObjC
+dotenv
