@@ -19,16 +19,14 @@ Installation
 3. Install the required dependencies: `pip install -r requirements.txt`
 4. Set up environment variables by creating a `.env` file and adding the following variables:
 
-makefile
-
 ```makefile
-MUSIC_DIR=/path/to/music/directory
-SCHEDULE_DIR=/path/to/schedule/directory
-LOG_FILE=/path/to/log/file
-MUSIC_APP_NAME=name_of_music_app
-VOLUME=volume_level
-ACTIVITY_FILES={"0": "monday.txt", "1": "tuesday.txt", "2": "wednesday.txt", "3": "thursday.txt", "4": "friday.txt", "5": "saturday.txt", "6": "sunday.txt"}
-LANGUAGES=en,fr,es,de
+MUSIC_APP_NAME=Music
+MUSIC_DIR=/path/to/dir/with/music
+SCHEDULE_DIR=/path/to/dir/with/schedule
+LOG_FILE=/path/to/dir/with/logs/music_app_controller.log
+VOLUME=100%
+ACTIVITY_FILES='{"0": "monday.txt", "1": "tuesday.txt", "2": "wednesday.txt", "3": "thursday.txt", "4": "friday.txt", "5": "saturday.txt", "6": "sunday.txt"}'
+LANGUAGES=en,de,es,fr
 ```
 
 Usage
@@ -38,15 +36,11 @@ Usage
 
 To pause the music, run the following command:
 
-css
-
 ```css
 python music_app_controller.py pause
 ```
 
 To resume the music, run the following command:
-
-lua
 
 ```lua
 python music_app_controller.py resume
@@ -68,8 +62,6 @@ To schedule activities, create a text file for each day of the week in the `SCHE
 
 In each file, add a list of activities in the following format:
 
-makefile
-
 ```makefile
 HH:MM - activity_name
 ```
@@ -77,8 +69,6 @@ HH:MM - activity_name
 Replace `HH:MM` with the time you want the activity to start (in 24-hour format), and `activity_name` with the name of the activity.
 
 For example:
-
-makefile
 
 ```makefile
 09:00 - exercise
