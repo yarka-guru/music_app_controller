@@ -18,7 +18,7 @@ CONFIG = {
     "LOG_FILE": os.getenv("LOG_FILE"),
     "MUSIC_APP_NAME": os.getenv("MUSIC_APP_NAME"),
     "VOLUME": os.getenv("VOLUME"),
-    "ACTIVITY_FILES": json.loads(os.getenv("ACTIVITY_FILES")),
+    "ACTIVITY_FILES": json.loads(os.getenv("ACTIVITY_FILES", "{}")),
     "LANGUAGES": os.environ.get("LANGUAGES", "").split(",")
 }
 
