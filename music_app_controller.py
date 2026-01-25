@@ -50,10 +50,9 @@ class MusicAppController:
             self.pause()
             try:
                 subprocess.run(["afplay", music_file], check=True)
-            except FileNotFoundError:
-                logging.error("Music file not found: %s", music_file)
-            if activity != "stop_music":
-                self.resume()
+            except (FileNotFoundError, subprocess.CalledProcessError) as e:
+                logging.error("Failed to play music file %s: %s", music_file, e)
+            self.resume()
 
     def _is_running(self) -> bool:
         """Check if the music app is running"""
@@ -99,6 +98,9 @@ class MusicScheduler:
 
     def _run(self) -> None:
         while True:
+            # Reload activities to pick up schedule changes
+            self.activities = self._read_activities()
+
             now = datetime.datetime.now()
             current_hour, current_minute = now.hour, now.minute
 
@@ -107,8 +109,9 @@ class MusicScheduler:
                     activity_time.hour == current_hour
                     and activity_time.minute == current_minute
                 ):
-                    if self.current_activity == "stop_music":
+                    if activity == "stop_music":
                         self.music_app_controller.pause()
+                        self.current_activity = activity
                         logging.info(
                             "Music stopped at %s", activity_time.strftime("%H:%M")
                         )
@@ -152,6 +155,9 @@ class MusicScheduler:
         activity_files_dict = CONFIG["ACTIVITY_FILES"]
         today = datetime.datetime.today()
         filename = activity_files_dict.get(str(today.weekday()))
+        if filename is None:
+            logging.error("No schedule file configured for weekday %s", today.weekday())
+            return ""
         return os.path.join(self.schedule_dir, filename)
 
     def get_current_activity(self) -> str:
