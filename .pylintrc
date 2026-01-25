@@ -1,0 +1,19 @@
+[MAIN]
+# Minimum score to pass (0-10)
+fail-under=9.0
+
+[MESSAGES CONTROL]
+# Disable checks that are common in test files
+disable=
+    # Protected access is common in tests
+    protected-access,
+    # Test classes don't need docstrings
+    missing-class-docstring,
+    # setUp with patch decorator changes signature
+    arguments-differ,
+    # Popen needs to stay open for process management
+    consider-using-with
+
+[DESIGN]
+# Allow more arguments for test methods with patches
+max-args=10

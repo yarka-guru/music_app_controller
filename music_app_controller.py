@@ -5,7 +5,6 @@ import os
 import re
 import signal
 import subprocess
-import sys
 import threading
 import time
 import json
@@ -16,8 +15,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Global flag for graceful shutdown
-_shutdown_requested = False
 
 
 def _parse_activity_files() -> dict:
@@ -110,6 +107,10 @@ class MusicAppController:
         if self._audio_process is not None:
             self._audio_process.terminate()
             self._audio_process = None
+
+    def stop_audio(self) -> None:
+        """Public method to stop any currently playing audio."""
+        self._stop_current_audio()
 
     def _is_running(self) -> bool:
         """Check if the music app is running"""
@@ -245,12 +246,12 @@ def main() -> None:
     music_app_controller = MusicAppController()
     music_scheduler = MusicScheduler(music_app_controller)
 
-    def signal_handler(signum: int, frame) -> None:
+    def signal_handler(signum: int, _frame) -> None:
         """Handle shutdown signals gracefully."""
         sig_name = signal.Signals(signum).name
         logging.info("Received signal %s, shutting down...", sig_name)
         music_scheduler.stop()
-        music_app_controller._stop_current_audio()
+        music_app_controller.stop_audio()
 
     # Register signal handlers for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)

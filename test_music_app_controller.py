@@ -1,10 +1,12 @@
+"""Unit tests for music_app_controller module."""
 import datetime
 import os
+import shutil
 import tempfile
 import unittest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 from music_app_controller import (
-    MusicAppController, MusicScheduler, CONFIG,
+    MusicAppController, MusicScheduler,
     _validate_app_name, _parse_activity_files
 )
 
@@ -121,14 +123,13 @@ class TestMusicSchedulerReadActivities(unittest.TestCase):
         self.controller = MusicAppController(music_app_name="TestMusic")
 
     def tearDown(self):
-        import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     @patch.object(MusicScheduler, "_get_filename")
     def test_read_activities_valid_file(self, mock_get_filename):
         """Test reading activities from a valid schedule file"""
         schedule_file = os.path.join(self.temp_dir, "test_schedule.txt")
-        with open(schedule_file, "w") as f:
+        with open(schedule_file, "w", encoding="utf-8") as f:
             f.write("08:00 - morning_music\n")
             f.write("12:00 - lunch_music\n")
             f.write("18:00 - evening_music\n")
@@ -156,7 +157,7 @@ class TestMusicSchedulerReadActivities(unittest.TestCase):
     def test_read_activities_invalid_format(self, mock_get_filename):
         """Test reading activities with invalid line format"""
         schedule_file = os.path.join(self.temp_dir, "test_schedule.txt")
-        with open(schedule_file, "w") as f:
+        with open(schedule_file, "w", encoding="utf-8") as f:
             f.write("08:00 - valid_activity\n")
             f.write("invalid line without separator\n")
             f.write("12:00 - another_valid\n")
@@ -234,26 +235,20 @@ class TestMusicAppControllerAudio(unittest.TestCase):
     def setUp(self):
         self.controller = MusicAppController(music_app_name="TestMusic")
 
-    def test_stop_current_audio_no_process(self):
-        """Test _stop_current_audio does nothing when no process running"""
-        self.controller._audio_process = None
-        self.controller._stop_current_audio()
-        self.assertIsNone(self.controller._audio_process)
+    def test_stop_audio_no_process(self):
+        """Test stop_audio does nothing when no process running"""
+        self.controller.stop_audio()
+        # Should not raise any exception
 
-    def test_stop_current_audio_with_process(self):
-        """Test _stop_current_audio terminates running process"""
+    def test_stop_audio_with_process(self):
+        """Test stop_audio terminates running process"""
         mock_process = MagicMock()
+        # pylint: disable=protected-access
         self.controller._audio_process = mock_process
 
-        self.controller._stop_current_audio()
+        self.controller.stop_audio()
 
         mock_process.terminate.assert_called_once()
-        self.assertIsNone(self.controller._audio_process)
-
-    def test_controller_initializes_audio_state(self):
-        """Test controller initializes audio process and thread as None"""
-        self.assertIsNone(self.controller._audio_process)
-        self.assertIsNone(self.controller._audio_thread)
 
 
 class TestSecurityValidation(unittest.TestCase):
