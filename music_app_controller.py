@@ -3,16 +3,21 @@ import datetime
 import logging
 import os
 import re
+import signal
 import subprocess
 import sys
+import threading
 import time
 import json
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import pync
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Global flag for graceful shutdown
+_shutdown_requested = False
 
 
 def _parse_activity_files() -> dict:
@@ -43,7 +48,6 @@ CONFIG = {
     "SCHEDULE_DIR": os.getenv("SCHEDULE_DIR"),
     "LOG_FILE": os.getenv("LOG_FILE"),
     "MUSIC_APP_NAME": os.getenv("MUSIC_APP_NAME"),
-    "VOLUME": os.getenv("VOLUME"),
     "ACTIVITY_FILES": _parse_activity_files(),
     "LANGUAGES": os.environ.get("LANGUAGES", "").split(",")
 }
@@ -52,6 +56,8 @@ class MusicAppController:
     """Class for controlling music app on Mac OS"""
     def __init__(self, music_app_name: str = CONFIG["MUSIC_APP_NAME"]):
         self.music_app_name = _validate_app_name(music_app_name)
+        self._audio_process: Optional[subprocess.Popen] = None
+        self._audio_thread: Optional[threading.Thread] = None
 
     def pause(self) -> None:
         """Pause music app if it is running"""
@@ -66,19 +72,44 @@ class MusicAppController:
             subprocess.run(["open", "-a", self.music_app_name], check=True)
 
     def play(self, activity: str) -> None:
-        """Play music for activity"""
+        """Play music for activity (non-blocking)"""
         if activity == "stop_music":
             self.pause()
             return
 
+        self._stop_current_audio()
+
         for language in CONFIG["LANGUAGES"]:
             music_file = os.path.join(CONFIG["MUSIC_DIR"], language, f"{activity}.mp3")
             self.pause()
+            self._play_audio_async(music_file)
+
+    def _play_audio_async(self, music_file: str) -> None:
+        """Play audio file in a separate thread to avoid blocking the scheduler."""
+        def _play():
             try:
-                subprocess.run(["afplay", music_file], check=True)
-            except (FileNotFoundError, subprocess.CalledProcessError) as e:
+                self._audio_process = subprocess.Popen(
+                    ["afplay", music_file],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE
+                )
+                _, stderr = self._audio_process.communicate()
+                if self._audio_process.returncode != 0:
+                    logging.error("Failed to play music file %s: %s", music_file, stderr.decode())
+                self.resume()
+            except FileNotFoundError as e:
                 logging.error("Failed to play music file %s: %s", music_file, e)
-            self.resume()
+            finally:
+                self._audio_process = None
+
+        self._audio_thread = threading.Thread(target=_play, daemon=True)
+        self._audio_thread.start()
+
+    def _stop_current_audio(self) -> None:
+        """Stop any currently playing audio."""
+        if self._audio_process is not None:
+            self._audio_process.terminate()
+            self._audio_process = None
 
     def _is_running(self) -> bool:
         """Check if the music app is running"""
@@ -103,12 +134,20 @@ class MusicScheduler:
         self.schedule_dir = schedule_dir
         self.activities = self._read_activities()
         self.current_activity = ""
+        self._running = False
 
     def run(self) -> None:
         """Run the music scheduler"""
         self._setup_logging()
         self._setup_notifications()
+        self._running = True
         self._run()
+
+    def stop(self) -> None:
+        """Stop the music scheduler gracefully."""
+        self._running = False
+        logging.info("Music app controller stopping...")
+        pync.notify("Music app controller stopped", title="Music App")
 
     def _setup_logging(self) -> None:
         logging.basicConfig(
@@ -123,7 +162,7 @@ class MusicScheduler:
         pync.notify("Music app controller started", title="Music App")
 
     def _run(self) -> None:
-        while True:
+        while self._running:
             # Reload activities to pick up schedule changes
             self.activities = self._read_activities()
 
@@ -152,8 +191,11 @@ class MusicScheduler:
                         pync.notify(activity, title="Music App")
                         self.music_app_controller.play(activity)
 
-            # Sleep for 30 seconds
-            time.sleep(30)
+            # Sleep in small intervals to allow faster shutdown response
+            for _ in range(6):  # 6 x 5 seconds = 30 seconds total
+                if not self._running:
+                    break
+                time.sleep(5)
 
     def _read_activities(self) -> List[Tuple[datetime.datetime, str]]:
         filename = self._get_filename()
@@ -202,7 +244,20 @@ def main() -> None:
     """Main function"""
     music_app_controller = MusicAppController()
     music_scheduler = MusicScheduler(music_app_controller)
+
+    def signal_handler(signum: int, frame) -> None:
+        """Handle shutdown signals gracefully."""
+        sig_name = signal.Signals(signum).name
+        logging.info("Received signal %s, shutting down...", sig_name)
+        music_scheduler.stop()
+        music_app_controller._stop_current_audio()
+
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     music_scheduler.run()
+
 
 if __name__ == "__main__":
     main()

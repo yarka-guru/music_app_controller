@@ -197,6 +197,60 @@ class TestMusicSchedulerGetFilename(unittest.TestCase):
         self.assertEqual(filename, "")
 
 
+class TestMusicSchedulerLifecycle(unittest.TestCase):
+    """Tests for scheduler start/stop lifecycle"""
+
+    @patch("music_app_controller.MusicScheduler._read_activities")
+    def test_scheduler_stop(self, mock_read_activities):
+        """Test scheduler stop method sets running to False"""
+        mock_read_activities.return_value = []
+        controller = MusicAppController(music_app_name="TestMusic")
+        scheduler = MusicScheduler(controller)
+
+        scheduler._running = True
+        with patch("pync.notify"):
+            scheduler.stop()
+
+        self.assertFalse(scheduler._running)
+
+    @patch("music_app_controller.MusicScheduler._read_activities")
+    def test_scheduler_initial_state(self, mock_read_activities):
+        """Test scheduler starts with _running=False"""
+        mock_read_activities.return_value = []
+        controller = MusicAppController(music_app_name="TestMusic")
+        scheduler = MusicScheduler(controller)
+
+        self.assertFalse(scheduler._running)
+
+
+class TestMusicAppControllerAudio(unittest.TestCase):
+    """Tests for audio playback functionality"""
+
+    def setUp(self):
+        self.controller = MusicAppController(music_app_name="TestMusic")
+
+    def test_stop_current_audio_no_process(self):
+        """Test _stop_current_audio does nothing when no process running"""
+        self.controller._audio_process = None
+        self.controller._stop_current_audio()
+        self.assertIsNone(self.controller._audio_process)
+
+    def test_stop_current_audio_with_process(self):
+        """Test _stop_current_audio terminates running process"""
+        mock_process = MagicMock()
+        self.controller._audio_process = mock_process
+
+        self.controller._stop_current_audio()
+
+        mock_process.terminate.assert_called_once()
+        self.assertIsNone(self.controller._audio_process)
+
+    def test_controller_initializes_audio_state(self):
+        """Test controller initializes audio process and thread as None"""
+        self.assertIsNone(self.controller._audio_process)
+        self.assertIsNone(self.controller._audio_thread)
+
+
 class TestSecurityValidation(unittest.TestCase):
     """Tests for security validation functions"""
 
