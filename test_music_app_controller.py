@@ -171,16 +171,21 @@ class TestMusicSchedulerReadActivities(unittest.TestCase):
 class TestMusicSchedulerGetFilename(unittest.TestCase):
 
     @patch.object(MusicScheduler, "_read_activities")
+    @patch("music_app_controller.CONFIG", {
+        "ACTIVITY_FILES": {"0": "monday.txt", "1": "tuesday.txt"}
+    })
     def test_get_filename_valid_weekday(self, mock_read_activities):
         """Test _get_filename returns correct path for valid weekday"""
         mock_read_activities.return_value = []
         controller = MusicAppController(music_app_name="TestMusic")
         scheduler = MusicScheduler(controller, schedule_dir="/test/schedule")
 
-        with patch("datetime.datetime") as mock_datetime:
-            mock_datetime.today.return_value.weekday.return_value = 0
-            mock_datetime.now = datetime.datetime.now
-            mock_datetime.strptime = datetime.datetime.strptime
+        with patch("music_app_controller.datetime") as mock_datetime:
+            mock_today = MagicMock()
+            mock_today.weekday.return_value = 0
+            mock_datetime.datetime.today.return_value = mock_today
+            mock_datetime.datetime.now = datetime.datetime.now
+            mock_datetime.datetime.strptime = datetime.datetime.strptime
 
             filename = scheduler._get_filename()
             self.assertEqual(filename, "/test/schedule/monday.txt")
