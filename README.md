@@ -1,25 +1,26 @@
 Introduction
 ------------
 
-The Music App Controller for Mac OS is a Python script that allows users to control their music app from the command line. This project is open-source and aims to provide a simple way to schedule and play music based on a list of activities.
+The Music App Controller for Mac OS is a Python script that allows users to schedule and play music based on a list of activities. This project is open-source and provides automatic music playback control based on daily schedules.
 
 Features
 --------
 
-* Pause and resume the music app
-* Play music for specific activities
+* Pause and resume the music app automatically
+* Play music for specific activities based on schedule
 * Schedule activities for specific times of the day
 * Notifications for when music starts and stops
+* Multi-language support for activity audio files
 
 Installation
 ------------
 
-1. Install Python 3 if it's not already installed on your system.
+1. Install Python 3.14+ if it's not already installed on your system.
 2. Clone the repository from GitHub: `git clone https://github.com/yarka-guru/music_app_controller.git`
 3. Install the required dependencies: `pip install -r requirements.txt`
 4. Set up environment variables by creating a `.env` file and adding the following variables:
 
-```makefile
+```bash
 MUSIC_APP_NAME=Music
 MUSIC_DIR=/path/to/dir/with/music
 SCHEDULE_DIR=/path/to/dir/with/schedule
@@ -32,37 +33,13 @@ LANGUAGES=en,de,es,fr
 Usage
 -----
 
-### Pause and resume music
-
-To pause the music, run the following command:
-
-```css
-python music_app_controller.py pause
-```
-
-To resume the music, run the following command:
-
-```lua
-python music_app_controller.py resume
-```
-
-### Play music for an activity
-
-To play music for a specific activity, run the following command:
-
-`python music_app_controller.py play activity_name`
-
-Replace `activity_name` with the name of the activity you want to play music for. For example:
-
-`python music_app_controller.py play exercise`
-
 ### Schedule activities
 
-To schedule activities, create a text file for each day of the week in the `SCHEDULE_DIR` directory. The name of the file should be the name of the day (e.g., `monday.txt`, `tuesday.txt`, etc.).
+Create a text file for each day of the week in the `SCHEDULE_DIR` directory. The name of the file should match the configuration in `ACTIVITY_FILES` (e.g., `monday.txt`, `tuesday.txt`, etc.).
 
 In each file, add a list of activities in the following format:
 
-```makefile
+```text
 HH:MM - activity_name
 ```
 
@@ -70,46 +47,82 @@ Replace `HH:MM` with the time you want the activity to start (in 24-hour format)
 
 For example:
 
-```makefile
+```text
 09:00 - exercise
 12:00 - lunch
 15:00 - tea_break
 18:00 - dinner
 20:00 - relax
-22:00 - sleep
+22:00 - stop_music
 ```
+
+Use `stop_music` as the activity name to pause playback at a specific time.
+
+### Music files
+
+Place your music files in the `MUSIC_DIR` directory, organized by language:
+
+```text
+music/
+├── en/
+│   ├── exercise.mp3
+│   ├── lunch.mp3
+│   └── ...
+├── de/
+│   ├── exercise.mp3
+│   └── ...
+└── ...
+```
+
+Each activity should have a corresponding `.mp3` file named `{activity_name}.mp3`.
 
 ### Run the music scheduler
 
-To run the music scheduler, run the following command:
+To run the music scheduler:
 
-`python music_app_controller.py`
+```bash
+python music_app_controller.py
+```
 
-This will start the scheduler, and music will be played automatically for the scheduled activities.
+This will start the scheduler, and music will be played automatically for the scheduled activities. The scheduler checks for activities every 30 seconds and reloads schedule files on each iteration.
 
-# Setting up Autoloader
+Setting up Autoloader
+---------------------
 
-In order to run the script automatically every time the system starts, you can set up a Launch Agent.
+To run the script automatically every time the system starts, set up a Launch Agent:
 
-1. Create a new property list file named startup.plist in the ~/Library/LaunchAgents directory using the command nano ~/Library/LaunchAgents/startup.plist
-2. Copy the following code and paste it into the startup.plist file:
+1. Create a new property list file:
 
-``` xml
+```bash
+nano ~/Library/LaunchAgents/com.music-app-controller.plist
+```
+
+2. Add the following configuration:
+
+```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.startup</string>
+    <string>com.music-app-controller</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/python3</string>
-        <string>/path/to/your/script.py</string>
+        <string>/path/to/music_app_controller.py</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
+    <key>WorkingDirectory</key>
+    <string>/path/to/music_app_controller</string>
 </dict>
 </plist>
+```
+
+3. Load the Launch Agent:
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.music-app-controller.plist
 ```
 
 Contributing
@@ -123,7 +136,7 @@ We welcome contributions from the community. To contribute to the project, pleas
 4. Push your changes to your fork: `git push origin feature/your_feature_name`
 5. Submit a pull request to the main repository.
 
-Conclusion
-----------
+License
+-------
 
-We hope this documentation helps you get started with the Music App Controller for Mac
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
