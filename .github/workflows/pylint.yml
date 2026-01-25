@@ -25,6 +25,5 @@ jobs:
         run: |
           python -m unittest test_music_app_controller.py
       - name: Analysing the code with pylint
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.modified, '*.py') }}
         run: |
           pylint $(git ls-files '*.py')
