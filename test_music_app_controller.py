@@ -3,7 +3,10 @@ import os
 import tempfile
 import unittest
 from unittest.mock import patch, MagicMock, call
-from music_app_controller import MusicAppController, MusicScheduler, CONFIG
+from music_app_controller import (
+    MusicAppController, MusicScheduler, CONFIG,
+    _validate_app_name, _parse_activity_files
+)
 
 
 class TestMusicAppController(unittest.TestCase):
@@ -192,6 +195,57 @@ class TestMusicSchedulerGetFilename(unittest.TestCase):
 
         filename = scheduler._get_filename()
         self.assertEqual(filename, "")
+
+
+class TestSecurityValidation(unittest.TestCase):
+    """Tests for security validation functions"""
+
+    def test_validate_app_name_valid(self):
+        """Test valid app names pass validation"""
+        self.assertEqual(_validate_app_name("Music"), "Music")
+        self.assertEqual(_validate_app_name("Spotify"), "Spotify")
+        self.assertEqual(_validate_app_name("Apple Music"), "Apple Music")
+        self.assertEqual(_validate_app_name("VLC-Player"), "VLC-Player")
+        self.assertEqual(_validate_app_name("App.Name"), "App.Name")
+
+    def test_validate_app_name_empty(self):
+        """Test empty app name returns default"""
+        self.assertEqual(_validate_app_name(""), "Music")
+        self.assertEqual(_validate_app_name(None), "Music")
+
+    def test_validate_app_name_injection_attempt(self):
+        """Test command injection attempts are rejected"""
+        with self.assertRaises(ValueError):
+            _validate_app_name('Music"; rm -rf /')
+        with self.assertRaises(ValueError):
+            _validate_app_name("Music' && malicious")
+        with self.assertRaises(ValueError):
+            _validate_app_name("Music$(whoami)")
+        with self.assertRaises(ValueError):
+            _validate_app_name("Music`id`")
+        with self.assertRaises(ValueError):
+            _validate_app_name("Music|cat /etc/passwd")
+
+    @patch("os.getenv")
+    def test_parse_activity_files_valid_json(self, mock_getenv):
+        """Test valid JSON is parsed correctly"""
+        mock_getenv.return_value = '{"0": "monday.txt", "1": "tuesday.txt"}'
+        result = _parse_activity_files()
+        self.assertEqual(result, {"0": "monday.txt", "1": "tuesday.txt"})
+
+    @patch("os.getenv")
+    def test_parse_activity_files_invalid_json(self, mock_getenv):
+        """Test invalid JSON returns empty dict"""
+        mock_getenv.return_value = "not valid json {"
+        result = _parse_activity_files()
+        self.assertEqual(result, {})
+
+    @patch("os.getenv")
+    def test_parse_activity_files_empty(self, mock_getenv):
+        """Test missing env var returns empty dict"""
+        mock_getenv.return_value = "{}"
+        result = _parse_activity_files()
+        self.assertEqual(result, {})
 
 
 if __name__ == "__main__":

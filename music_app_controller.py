@@ -2,7 +2,9 @@
 import datetime
 import logging
 import os
+import re
 import subprocess
+import sys
 import time
 import json
 from typing import List, Tuple
@@ -12,20 +14,44 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _parse_activity_files() -> dict:
+    """Safely parse ACTIVITY_FILES JSON from environment variable."""
+    activity_files_str = os.getenv("ACTIVITY_FILES", "{}")
+    try:
+        return json.loads(activity_files_str)
+    except json.JSONDecodeError as e:
+        logging.error("Invalid JSON in ACTIVITY_FILES environment variable: %s", e)
+        return {}
+
+
+def _validate_app_name(app_name: str) -> str:
+    """Validate and sanitize the music app name to prevent command injection."""
+    if not app_name:
+        return "Music"
+    # Allow only alphanumeric characters, spaces, hyphens, and periods
+    if not re.match(r'^[\w\s\-\.]+$', app_name):
+        raise ValueError(
+            f"Invalid MUSIC_APP_NAME: '{app_name}'. "
+            "Only alphanumeric characters, spaces, hyphens, and periods are allowed."
+        )
+    return app_name
+
+
 CONFIG = {
     "MUSIC_DIR": os.getenv("MUSIC_DIR"),
     "SCHEDULE_DIR": os.getenv("SCHEDULE_DIR"),
     "LOG_FILE": os.getenv("LOG_FILE"),
     "MUSIC_APP_NAME": os.getenv("MUSIC_APP_NAME"),
     "VOLUME": os.getenv("VOLUME"),
-    "ACTIVITY_FILES": json.loads(os.getenv("ACTIVITY_FILES", "{}")),
+    "ACTIVITY_FILES": _parse_activity_files(),
     "LANGUAGES": os.environ.get("LANGUAGES", "").split(",")
 }
 
 class MusicAppController:
     """Class for controlling music app on Mac OS"""
     def __init__(self, music_app_name: str = CONFIG["MUSIC_APP_NAME"]):
-        self.music_app_name = music_app_name
+        self.music_app_name = _validate_app_name(music_app_name)
 
     def pause(self) -> None:
         """Pause music app if it is running"""
