@@ -15,7 +15,7 @@ Features
 Installation
 ------------
 
-1. Install Python 3.14+ if it's not already installed on your system.
+1. Install Python 3.13+ if it's not already installed on your system.
 2. Clone the repository from GitHub: `git clone https://github.com/yarka-guru/music_app_controller.git`
 3. Install the required dependencies: `pip install -r requirements.txt`
 4. Set up environment variables by creating a `.env` file and adding the following variables:
